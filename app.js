@@ -1,6 +1,6 @@
 const $=s=>document.querySelector(s), cats={餐饮:['正餐','饮料','咖啡','零食','外卖'],购物:['服饰','美妆','日用品','数码','其他'],交通:['公交地铁','打车','火车','飞机'],娱乐:['电影','游戏','演出','旅游'],教育:['书籍','课程','软件','AI服务'],居住:['房租','水电','生活服务'],医疗:['药品','医疗服务'],其他:['待确认','其他']};
 let file=null,records=[],review=[],ignored=[],exportRows=[],modelAccepted=0,modelFailed=false,modelStatus='未调用';
-const apiInput=$('#apiUrl'),runtimeNotice=$('#runtimeNotice');if(location.protocol==='file:'){runtimeNotice.textContent='当前是直接打开的本地文件页面：账单解析和本地规则可用，但模型 API 不会被调用。要启用模型，请通过 node server.mjs 启动后访问 http://localhost:8787，或部署到 HTTPS 网站。';runtimeNotice.classList.remove('hidden')}else apiInput.value=new URL('/api/classify',location.href).href;
+const apiInput=$('#apiUrl'),runtimeNotice=$('#runtimeNotice');if(location.protocol==='file:'){apiInput.value='http://127.0.0.1:8787/api/classify';runtimeNotice.textContent='本地文件页面将把待分类交易 POST 到本机模型服务。请先启动 node server.mjs 并在服务端配置 LLM_API_KEY；如服务未运行，结果会显示连接失败。';runtimeNotice.classList.remove('hidden')}else apiInput.value=new URL('/api/classify',location.href).href;
 $('#file').onchange=e=>{file=e.target.files[0];$('#fileName').textContent=file?.name||'';$('#importBtn').disabled=!file};
 $('#importBtn').onclick=async()=>{try{const rows=await parseFile(file);records=normalize(rows);if(!records.length)throw Error('没有找到交易明细，请确认选择的是微信支付账单。');const before=records.length;let ids=new Set();records=records.filter(r=>{let k=r.id||[r.date,r.merchant,r.item,r.amount,r.direction].join('|');if(ids.has(k))return false;ids.add(k);return true});await classify();renderSummary(before);$('#summaryView').classList.remove('hidden');$('#importView').classList.add('hidden')}catch(e){alert(e.message||'解析失败')}};
 async function parseFile(f){if(/\.xlsx?$|\.xlsm$/i.test(f.name)){if(!window.XLSX)throw Error('表格解析组件未加载，请联网后重试。');let wb=XLSX.read(await f.arrayBuffer(),{type:'array'});return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''})}let text=await f.text();if(text.includes('�'))text=new TextDecoder('gb18030').decode(await f.arrayBuffer());return csvRows(text)}
@@ -17,8 +17,8 @@ async function classify(){
  }
  if($('#useAI').checked&&candidates.length){
   const url=$('#apiUrl').value.trim();
-  if(!url||location.protocol==='file:'){
-   modelStatus=location.protocol==='file:'?'未调用（file:// 页面不能连接模型）':'未调用（未设置模型地址）';
+  if(!url){
+   modelStatus='未调用（未设置模型地址）';
    review.push(...candidates.map(r=>({...r,category:'其他',subcategory:'待确认',reason:modelStatus+'；请手动分类'})));
   }else{
    for(let i=0;i<candidates.length;i+=30){
@@ -33,7 +33,7 @@ async function classify(){
      });
     }catch(e){modelFailed=true;candidates.slice(i,i+30).forEach(r=>review.push({...r,category:'其他',subcategory:'待确认',reason:'模型分类失败：'+e.message}))}
    }
-   modelStatus=modelFailed?'部分请求失败':'调用成功';
+   modelStatus=modelFailed?'请求失败（查看待确认原因）':'调用成功';
   }
  }else if(candidates.length){modelStatus='未启用';review.push(...candidates.map(r=>({...r,category:'其他',subcategory:'待确认',reason:'需要手动选择分类'})))}
 }

@@ -11,22 +11,22 @@ cd outputs
 LLM_API_KEY='你的模型服务密钥' LLM_MODEL='gpt-4o-mini' node server.mjs
 ```
 
-可设置 `LLM_API_URL` 指向兼容 OpenAI Chat Completions 的接口地址；`PORT` 默认 8787。不开模型也能使用本地明确规则和手动分类：启动后在设置里关闭模型分类即可。请勿把服务端口直接暴露到公网；正式部署应使用支持 HTTPS 的托管平台，并将密钥添加到平台的服务端环境变量。
+可设置 `LLM_API_URL` 指向兼容 OpenAI Chat Completions 的接口地址；`PORT` 默认 8787，服务默认只监听本机 `127.0.0.1`。部署到托管平台时设置 `HOST=0.0.0.0`。不开模型也能使用本地明确规则和手动分类：启动后在设置里关闭模型分类即可。请勿把服务端口直接暴露到公网；正式部署应使用支持 HTTPS 的托管平台，并将密钥添加到平台的服务端环境变量。
 
 ## iPhone 使用/部署
 
 1. 将 `outputs` 目录部署到支持 Node.js 的 HTTPS 主机（如自有 VPS 或 Node 应用托管服务），启动命令为 `node server.mjs`，并配置 `LLM_API_KEY`、可选 `LLM_MODEL` 和 `LLM_API_URL`。
-2. 在 iPhone Safari 打开服务地址。模型服务地址默认是同源 `/api/classify`。如果使用独立后端，再在“设置”中填入其 HTTPS 地址。密钥绝不输入网页。
+2. 在 iPhone Safari 打开 HTTPS 服务地址。网页会对同源 `/api/classify` 发出 POST。若直接从本地 `file://` 打开页面，默认会 POST 到 `http://127.0.0.1:8787/api/classify`，因此需先在该电脑启动本地服务；手机端应访问 HTTPS 部署地址。密钥只配置在服务端环境变量。
 3. Safari 分享菜单选择“添加到主屏幕”。微信账单从微信保存到“文件”后，在应用中选取 CSV/XLSX。
 4. 审核待确认项；导出 CSV 后，在 iOS 分享菜单保存到“文件”或交给 iCost。首次导入前，先在 iCost 当前版本的模板导入流程中核对列名、账户和分类名称。
 
-如果直接用浏览器打开 `index.html`（`file://`），相对路径可正常加载页面和脚本，但模型 API 无法从 file 页面调用；页面会显示提示。要测试模型分类，请通过 `node server.mjs` 打开 `http://localhost:8787` 或使用 HTTPS 部署。
+直接用浏览器打开 `index.html`（`file://`）时，页面会把模型请求发到本机 `127.0.0.1:8787`，需先运行带 `LLM_API_KEY` 的服务端。也可通过 `node server.mjs` 打开 `http://localhost:8787`，或在手机上使用 HTTPS 部署。
 
 本 MVP 的文件解析和确定规则分类均在设备上进行。模型调用会发送商户、商品、交易类型、金额、备注和批次内序号；日期、交易单号及原始完整账单不会发送。模型服务商仍可能按其服务条款处理请求内容。
 
 ## 从旧版更新
 
-请把新版整个 `outputs` 目录重新部署到原来的 HTTPS 地址，至少覆盖 `index.html`、`app.js`、`style.css`、`sw.js` 和 `server.mjs`，然后重启 Node 服务。页面标题会显示 `账单整理器 v4`，新版 CSV 文件名为 `icost_import_v4.csv`。如果 iPhone 仍显示旧页面，请从主屏幕移除旧网页快捷方式，在 Safari 打开同一地址并刷新后，再重新添加到主屏幕；新版 service worker 会清理旧缓存。
+请把新版整个 `outputs` 目录覆盖到原来的 HTTPS 地址，至少覆盖 `index.html`、`app.js`、`style.css`、`sw.js` 和 `server.mjs`，然后重启 Node 服务。页面标题会显示 `账单整理器 v4`，新版 CSV 文件名为 `icost_import_v4.csv`。摘要页面会显示模型自动分类笔数及调用状态。如果 iPhone 仍显示旧页面，请从主屏幕移除旧网页快捷方式，在 Safari 打开同一地址并刷新后，再重新添加到主屏幕；新版 service worker 会清理旧缓存。
 
 ## 当前处理规则
 
